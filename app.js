@@ -29,30 +29,15 @@ osSelect.addEventListener('change', function() {
 });
 
 // ==========================================
-// 2. LÓGICA DE HORARIOS, BLOQUEOS Y FILTROS
+// 2. LÓGICA DE HORARIOS Y FILTROS POR FECHA
 // ==========================================
 const fechaInput = document.getElementById('fecha');
 const servicioSelect = document.getElementById('servicio');
 const horarioSelect = document.getElementById('horario');
 
-// Bloquear fechas pasadas en el calendario nativo
+// Bloquear días pasados en el almanaque
 const hoy = new Date().toISOString().split('T')[0];
 fechaInput.min = hoy;
-
-// Validar que no se seleccionen fines de semana (Sábados ni Domingos)
-fechaInput.addEventListener('input', function() {
-    if (!this.value) return;
-    
-    const fechaSeleccionada = new Date(this.value + 'T00:00:00');
-    const diaSemana = fechaSeleccionada.getDay(); // 0 = Domingo, 6 = Sábado
-
-    if (diaSemana === 0 || diaSemana === 6) {
-        alert("El consultorio médico atiende exclusivamente de Lunes a Viernes. Por favor, seleccione un día laboral.");
-        this.value = ""; 
-        horarioSelect.disabled = true;
-        horarioSelect.innerHTML = '<option value="">Seleccione fecha y servicio</option>';
-    }
-});
 
 fechaInput.addEventListener('change', generarHorariosDisponibles);
 servicioSelect.addEventListener('change', generarHorariosDisponibles);
@@ -64,47 +49,42 @@ function generarHorariosDisponibles() {
         return;
     }
 
+    // Alerta inmediata si eligen Sábado o Domingo al hacer clic en el input
+    const fechaEvaluada = new Date(fechaInput.value + 'T00:00:00');
+    if (fechaEvaluada.getDay() === 0 || fechaEvaluada.getDay() === 6) {
+        alert("El consultorio médico atiende exclusivamente de Lunes a Viernes.");
+        fechaInput.value = "";
+        horarioSelect.disabled = true;
+        horarioSelect.innerHTML = '<option value="">Seleccione fecha y servicio</option>';
+        return;
+    }
+
     const opcionSeleccionada = servicioSelect.options[servicioSelect.selectedIndex];
     const duracionServicioNuevo = parseInt(opcionSeleccionada.getAttribute('data-duracion'));
     horarioSelect.innerHTML = '<option value="">Seleccione un horario...</option>';
     
-    // Jornada laboral continua (De corrido)
-    let horaInicioJornada = 600; // 10:00 hs (10 * 60)
-    const horaFinJornada = 900;  // 15:00 hs (15 * 60)
+    // Jornada laboral de corrido (10:00 a 15:00 hs)
+    let horaInicioJornada = 600; 
+    const horaFinJornada = 900;  
 
-    /* BASE DE DATOS LOCAL
-       Espacio reservado para inyectar los rangos ocupados dinámicos en la Etapa 2.
-    */
-    const turnosOcupados = [];
+    const turnosOcupados = []; // Simulación vacía para la demo
 
-    // Capturar fecha y hora actual del sistema del cliente
     const ahora = new Date();
     const anio = ahora.getFullYear();
     const mes = String(ahora.getMonth() + 1).padStart(2, '0');
     const dia = String(ahora.getDate()).padStart(2, '0');
     const fechaHoyString = `${anio}-${mes}-${dia}`; 
-    
     const minutosActuales = (ahora.getHours() * 60) + ahora.getMinutes();
+    
     let hayHorariosTotales = false;
 
     while (horaInicioJornada + duracionServicioNuevo <= horaFinJornada) {
-        
-        // Regla 1: Colisión con turnos ya agendados en la simulación
-        let estaOcupado = turnosOcupados.some(turno => {
-            return (horaInicioJornada >= turno.inicio && horaInicioJornada < turno.fin) || 
-                   (horaInicioJornada + duracionServicioNuevo > turno.inicio && horaInicioJornada + duracionServicioNuevo <= turno.fin);
-        });
+        let estaOcupado = false;
 
-        // Reglas de seguridad aplicables exclusivamente si se reserva para el mismo día de HOY
+        // Filtros especiales si seleccionan el día de HOY
         if (fechaInput.value === fechaHoyString) {
-            // Regla 2: Ocultar horas que ya pasaron en el reloj
-            if (horaInicioJornada <= minutosActuales) {
-                estaOcupado = true;
-            }
-            // Regla 3: Restricción de 1 hora de anticipación antes del cierre definitivo de la jornada
-            if (horaInicioJornada > (horaFinJornada - 60)) {
-                estaOcupado = true;
-            }
+            if (horaInicioJornada <= minutosActuales) estaOcupado = true; // Horas pasadas
+            if (horaInicioJornada > (horaFinJornada - 60)) estaOcupado = true; // Menos de 1 hora para el cierre
         }
 
         let hrs = Math.floor(horaInicioJornada / 60);
@@ -131,12 +111,12 @@ function generarHorariosDisponibles() {
         horarioSelect.disabled = false;
     } else {
         horarioSelect.disabled = true;
-        horarioSelect.innerHTML = '<option value="">Sin turnos disponibles para este día</option>';
+        horarioSelect.innerHTML = '<option value="">Sin turnos disponibles para hoy</option>';
     }
 }
 
 // ==========================================
-// 3. RESTRICCIONES DE ESCRITURA EN TIEMPO REAL
+// 3. RESTRICCIONES DE CARACTERES EN VIVO
 // ==========================================
 const nombreInput = document.getElementById('nombre');
 const telefonoInput = document.getElementById('telefono');
@@ -148,57 +128,48 @@ nombreInput.addEventListener('input', function() {
 
 telefonoInput.addEventListener('input', function() {
     let valor = this.value;
-    if (valor.startsWith('+')) {
-        this.value = '+' + valor.slice(1).replace(/[^0-9]/g, '');
-    } else {
-        this.value = valor.replace(/[^0-9]/g, '');
-    }
+    this.value = valor.startsWith('+') ? '+' + valor.slice(1).replace(/[^0-9]/g, '') : valor.replace(/[^0-9]/g, '');
 });
 
 emailInput.addEventListener('input', function() {
-    this.value = this.value.replace(/\s/g, '');
+    this.value = this.value.replace(/\s/g, '').toLowerCase();
 });
 
 // ==========================================
-// 4. ENVÍO DEL FORMULARIO A TRAVÉS DE WEBHOOK (MAKE.COM)
+// 4. CONTROL DE ENVÍO BLINDADO (LA CLAVE)
 // ==========================================
 document.getElementById('turnoForm').addEventListener('submit', function(e) {
-    // 1. FRENAR EL ENVÍO AUTOMÁTICO PARA HACER NUESTRAS VALIDACIONES
-    e.preventDefault(); 
+    e.preventDefault(); // Detenemos cualquier acción por defecto obligatoriamente
     
-    // 2. VALIDACIÓN A: Forzar al navegador a chequear el PATTERN del HTML (.com, .com.ar, .ar)
-    if (!this.checkValidity()) {
-        this.reportValidity(); // Muestra el cartelito nativo de error del navegador
-        return; // Frena el código acá, no cambia el botón ni envía nada a Make
+    // VALIDACIÓN 1: Verificar campos vacíos obligatorios
+    if (!nombreInput.value || !telefonoInput.value || !emailInput.value || !servicioSelect.value || !fechaInput.value || !horarioSelect.value) {
+        alert("Por favor, completa todos los campos obligatorios (*).");
+        return;
     }
 
-    // 3. VALIDACIÓN B: Candado manual extra para el Email (.om, .co, etc.)
-    const emailValidoRegEx = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com\.ar|com|ar)$/;
-    if (!emailValidoRegEx.test(emailInput.value)) {
-        alert("Error: El correo electrónico debe terminar estrictamente en .com, .com.ar o .ar");
+    // VALIDACIÓN 2: Bloqueo estricto de extensiones (.com, .com.ar, .ar) ¡Adiós al .om!
+    const regexEmailEstricto = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com\.ar|com|ar)$/;
+    if (!regexEmailEstricto.test(emailInput.value)) {
+        alert("Error: El correo electrónico no es válido. Debe terminar estrictamente en .com, .com.ar o .ar");
         emailInput.focus();
+        return; // Frena el código acá. No manda nada a Make ni cambia el botón.
+    }
+
+    // VALIDACIÓN 3: Bloqueo de fin de semana al enviar
+    const fechaSeleccionada = new Date(fechaInput.value + 'T00:00:00');
+    if (fechaSeleccionada.getDay() === 0 || fechaSeleccionada.getDay() === 6) {
+        alert("Error: No se atienden turnos los fines de semana (Sábados o Domingos).");
+        fechaInput.focus();
         return; // Frena el código
     }
 
-    // 4. VALIDACIÓN C: Candado manual para Fin de Semana (Sábado/Domingo)
-    if (fechaInput.value) {
-        const fechaSeleccionada = new Date(fechaInput.value + 'T00:00:00');
-        const diaSemana = fechaSeleccionada.getDay(); // 0 = Domingo, 6 = Sábado
-        if (diaSemana === 0 || diaSemana === 6) {
-            alert("Error: No se pueden programar turnos los fines de semana.");
-            fechaInput.focus();
-            return; // Frena el código
-        }
-    }
-
-    // =================================================================
-    // SI PASÓ TODAS LAS VALIDACIONES ANTERIORES, RECIÉN AHÍ PROCESAMOS
-    // =================================================================
+    // =========================================================
+    // SI PASÓ LOS CANDADOS, RECIÉN AQUÍ SE EJECUTA EL WEBHOOK
+    // =========================================================
     const btnConfirmar = document.getElementById('btnConfirmar');
     const btnTexto = document.getElementById('btnTexto');
     const opcionSeleccionada = servicioSelect.options[servicioSelect.selectedIndex];
     
-    // Ahora sí cambiamos el estado visual del botón de forma segura
     btnConfirmar.disabled = true;
     btnConfirmar.style.backgroundColor = "#94a3b8";
     btnConfirmar.style.cursor = "not-allowed";
@@ -213,7 +184,6 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
         obraSocial: osSelect.value.toUpperCase(),
         plan: planSelect.options[planSelect.selectedIndex].text,
         fecha: fechaInput.value,
-        previoHorario: horarioSelect.value,
         horario: horarioSelect.value,
         comentarios: document.getElementById('comentarios').value
     };
@@ -222,27 +192,24 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
 
     fetch(urlWebhookMake, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datosTurno)
     })
     .then(response => {
         if (response.ok) {
-            alert(`¡Turno reservado con éxito!\nSe ha enviado un correo electrónico de confirmación a ${datosTurno.email}.`);
+            alert(`¡Turno reservado con éxito!\nSe envió un correo a ${datosTurno.email}.`);
             document.getElementById('turnoForm').reset(); 
             horarioSelect.disabled = true;
             planSelect.disabled = true;
         } else {
-            alert("Hubo un problema al procesar el turno. Por favor, intenta nuevamente.");
+            alert("Hubo un problema en el servidor de Make. Intenta nuevamente.");
         }
     })
     .catch(error => {
         console.error("Error:", error);
-        alert("Error de conexión con el servidor. Inténtalo más tarde.");
+        alert("Error de red. Verifica tu conexión.");
     })
     .finally(() => {
-        // Restaurar botón a su estado original
         btnConfirmar.disabled = false;
         btnConfirmar.style.backgroundColor = ""; 
         btnConfirmar.style.cursor = "pointer";
