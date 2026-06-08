@@ -150,41 +150,34 @@ emailInput.addEventListener('input', function() {
 
 
 
-fechaInput.addEventListener('change', function() {
-    const fecha = new Date(this.value + 'T00:00:00');
-    if (fecha.getDay() === 0 || fecha.getDay() === 6) {
-        alert("Por favor, seleccione un día de lunes a viernes.");
-        this.value = ""; // Borra la selección
-    }
-});
 
 // ==========================================
-// 4. ENVÍO DEL FORMULARIO (VALIDADO Y BLINDADO)
+// 4. ENVÍO DEL FORMULARIO (VALIDADO Y CENTRALIZADO)
 // ==========================================
 document.getElementById('turnoForm').addEventListener('submit', function(e) {
-    e.preventDefault(); // Detenemos el envío inmediato
+    e.preventDefault(); 
     
-    // --- NUEVA VALIDACIÓN: CORREO (.om) ---
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|ar|com\.ar)$/;
-    if (!emailRegex.test(emailInput.value)) {
-        alert("Error: El correo no es válido. Debe terminar en .com, .ar o .com.ar");
-        emailInput.focus();
-        return; // SE DETIENE AQUÍ, NO PASA AL FETCH
-    }
-
-    // --- NUEVA VALIDACIÓN: FIN DE SEMANA ---
+    // --- 1. VALIDACIÓN DE FECHA (Bloqueo de fin de semana) ---
     const fechaSeleccionada = new Date(fechaInput.value + 'T00:00:00');
-    const diaSemana = fechaSeleccionada.getDay(); // 0 es Domingo, 6 es Sábado
-    if (diaSemana === 0 || diaSemana === 6) {
+    const dia = fechaSeleccionada.getDay();
+    if (dia === 0 || dia === 6) {
         alert("Lo sentimos, no realizamos turnos los fines de semana.");
-        fechaInput.value = ""; // Limpiamos la fecha
-        return; // SE DETIENE AQUÍ
+        return; 
     }
 
-    // --- SI PASA LAS VALIDACIONES, RECIÉN AHÍ PROCESAMOS ---
-    const btnConfirmar = document.getElementById('btnConfirmar');
-    const opcionSeleccionada = servicioSelect.options[servicioSelect.selectedIndex];
+    // --- 2. VALIDACIÓN DE CORREO (Bloqueo de extensiones sospechosas) ---
+    // Usamos una lista de permitidos explícita para evitar errores con ".om"
+    const correo = emailInput.value.toLowerCase();
+    const esValido = (correo.endsWith('.com') || correo.endsWith('.ar') || correo.endsWith('.com.ar'));
     
+    if (!esValido) {
+        alert("Error: Correo inválido. Debe terminar en .com, .ar o .com.ar");
+        emailInput.focus();
+        return; 
+    }
+
+    // --- 3. PROCESAMIENTO ---
+    const btnConfirmar = document.getElementById('btnConfirmar');
     btnConfirmar.disabled = true;
     btnConfirmar.innerText = "Procesando reserva...";
 
@@ -193,7 +186,6 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
         telefono: telefonoInput.value,
         email: emailInput.value,
         servicio: servicioSelect.options[servicioSelect.selectedIndex].text, 
-        duracion: parseInt(opcionSeleccionada.getAttribute('data-duracion')), 
         obraSocial: osSelect.value.toUpperCase(),
         plan: planSelect.options[planSelect.selectedIndex].text,
         fecha: fechaInput.value,
@@ -201,23 +193,23 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
         comentarios: document.getElementById('comentarios').value
     };
 
-    const urlWebhookMake = "https://hook.eu1.make.com/hp1k5ih8o8u86v9ri9yfypknuwjacajr";
-
-    fetch(urlWebhookMake, {
+    fetch("https://hook.eu1.make.com/hp1k5ih8o8u86v9ri9yfypknuwjacajr", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datosTurno)
     })
     .then(response => {
         if (response.ok) {
-            alert(`¡Turno reservado con éxito!`);
+            alert("¡Turno reservado con éxito!");
             document.getElementById('turnoForm').reset(); 
+            // Resetear estados visuales
             horarioSelect.disabled = true;
+            planSelect.disabled = true;
         } else {
-            alert("Hubo un error en el servidor.");
+            alert("Error en el servidor. Intenta de nuevo.");
         }
     })
-    .catch(error => alert("Error de conexión."))
+    .catch(() => alert("Error de conexión."))
     .finally(() => {
         btnConfirmar.disabled = false;
         btnConfirmar.innerText = "Confirmar Reserva";
