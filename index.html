@@ -10,15 +10,22 @@
         .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
         .form-group label { margin-bottom: 5px; font-weight: bold; color: #1e293b; }
         .form-group input, .form-group select, .form-group textarea { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
-        .btn-submit { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+        .btn-submit { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .btn-submit:hover { background-color: #1d4ed8; }
     </style>
 </head>
 <body>
-
+   <div class="video-background">
+    <video autoplay loop muted playsinline>
+        <source src="/fondo.mp4 type="video/mp4">
+    </video>
+</div>
+<div class="video-overlay"></div>
     <div class="container">
         <h2>Solicitud de Turno Médico</h2>
-        <form id="turnoForm" novalidate> <div class="form-group">
+        <form id="turnoForm">
+            
+            <div class="form-group">
                 <label for="nombre">Nombre y Apellido *</label>
                 <input type="text" id="nombre" required placeholder="Ej: Roberto Correa">
             </div>
@@ -84,6 +91,5 @@
         </form>
     </div>
 
-    <script src="script.js"></script>
 </body>
 </html>
