@@ -1,5 +1,7 @@
 // Variable para guardar los turnos confirmados en esta sesión de la demo
 let turnosConfirmadosEnSesion = [];
+// Variable que guardará los turnos ocupados reales venidos de Calendar
+let turnosOcupadosEnCalendar = [];
 
 // ==========================================
 // 1. MAPEO DE OBRAS SOCIALES Y PLANES
@@ -12,6 +14,21 @@ const planesPorOS = {
 
 const osSelect = document.getElementById('obraSocial');
 const planSelect = document.getElementById('plan');
+
+// Función para consultar a Make (Webhook de lectura)
+async function listCalendar() {
+    try {
+        // REEMPLAZA ESTA URL POR LA DE TU WEBHOOK DE LECTURA EN MAKE
+        const respuesta = await fetch("https://hook.eu1.make.com/hp1k5ih8o8u86v9ri9yfypknuwjacajr");
+        turnosOcupadosEnCalendar = await respuesta.json();
+        console.log("Turnos sincronizados con Calendar:", turnosOcupadosEnCalendar);
+    } catch (error) {
+        console.error("Error al sincronizar con Calendar:", error);
+    }
+}
+
+// Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', listCalendar);
 
 osSelect.addEventListener('change', function() {
     const osSeleccionada = this.value;
@@ -72,8 +89,9 @@ function generarHorariosDisponibles() {
         let mins = horaInicioJornada % 60;
         let tiempoFormateado = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
         
-        // --- VERIFICACIÓN DE SESIÓN (No repetir turnos) ---
-        let estaOcupado = turnosConfirmadosEnSesion.includes(fechaInput.value + "_" + tiempoFormateado);
+        // --- VERIFICACIÓN COMBINADA (Sesión local + Google Calendar real) ---
+        let estaOcupado = turnosConfirmadosEnSesion.includes(fechaInput.value + "_" + tiempoFormateado) || 
+                          turnosOcupadosEnCalendar.includes(fechaInput.value + "_" + tiempoFormateado);
 
         // Restricción de tiempo real si es HOY
         if (fechaInput.value === fechaHoyString) {
@@ -128,14 +146,12 @@ emailInput.addEventListener('input', function() {
 document.getElementById('turnoForm').addEventListener('submit', function(e) {
     e.preventDefault(); 
     
-    // Validación de fin de semana
     const fechaSeleccionada = new Date(fechaInput.value + 'T00:00:00');
     if (fechaSeleccionada.getDay() === 0 || fechaSeleccionada.getDay() === 6) {
         alert("Lo sentimos, no realizamos turnos los fines de semana.");
         return; 
     }
 
-    // Validación de correo
     const correo = emailInput.value.toLowerCase();
     if (!(correo.endsWith('.com') || correo.endsWith('.ar') || correo.endsWith('.com.ar'))) {
         alert("Error: Correo inválido.");
@@ -165,9 +181,7 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
     })
     .then(response => {
         if (response.ok) {
-            // --- BLOQUEO DE TURNO CONFIRMADO ---
             turnosConfirmadosEnSesion.push(fechaInput.value + "_" + horarioSelect.value);
-            
             alert("¡Turno reservado con éxito!");
             document.getElementById('turnoForm').reset(); 
             horarioSelect.disabled = true;
