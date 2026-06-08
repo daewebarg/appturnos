@@ -58,15 +58,11 @@ function generarHorariosDisponibles() {
     let horaInicioJornada = 600; // 10:00 hs en minutos (10 * 60)
     const horaFinJornada = 900;  // 15:00 hs en minutos (15 * 60)
 
-    /* SIMULACIÓN DE BASE DE DATOS:
-      Turnos pasados a minutos limpios (enteros) para evitar conflictos con decimales.
-      - 600 a 720 (10:00 a 12:00 hs)
-      - 810 a 840 (13:30 a 14:00 hs)
+    /* BASE DE DATOS REAL:
+       Dejamos el arreglo vacío para que todos los horarios arranquen disponibles.
+       En el futuro, aquí harás el fetch() a tu base de datos o Google Calendar.
     */
-    const turnosOcupados = [
-        { inicio: 600, fin: 720 },
-        { inicio: 810, fin: 840 }
-    ];
+    const turnosOcupados = [];
 
     let hayHorariosTotales = false;
 
