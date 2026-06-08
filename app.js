@@ -1,3 +1,6 @@
+// Variable para guardar los turnos confirmados en esta sesión de la demo
+let turnosConfirmadosEnSesion = [];
+
 // ==========================================
 // 1. MAPEO DE OBRAS SOCIALES Y PLANES
 // ==========================================
@@ -35,7 +38,6 @@ const fechaInput = document.getElementById('fecha');
 const servicioSelect = document.getElementById('servicio');
 const horarioSelect = document.getElementById('horario');
 
-// Bloquear fechas pasadas en el calendario
 const hoy = new Date().toISOString().split('T')[0];
 fechaInput.min = hoy;
 
@@ -53,51 +55,32 @@ function generarHorariosDisponibles() {
     const duracionServicioNuevo = parseInt(opcionSeleccionada.getAttribute('data-duracion'));
     horarioSelect.innerHTML = '<option value="">Seleccione un horario...</option>';
     
-    // Jornada laboral expresada directamente en minutos enteros
-    let horaInicioJornada = 600; // 10:00 hs en minutos (10 * 60)
-    const horaFinJornada = 900;  // 15:00 hs en minutos (15 * 60)
+    let horaInicioJornada = 600; 
+    const horaFinJornada = 900;  
 
-    /* BASE DE DATOS REAL:
-       Arranca vacío. Aquí es donde en una segunda etapa conectarás la lectura 
-       en tiempo real de los turnos ocupados desde tu base de datos o API.
-    */
-    const turnosOcupados = [];
-
-    // OBTENER FECHA Y HORA ACTUAL (ZONA HORARIA LOCAL)
     const ahora = new Date();
     const anio = ahora.getFullYear();
     const mes = String(ahora.getMonth() + 1).padStart(2, '0');
     const dia = String(ahora.getDate()).padStart(2, '0');
-    const fechaHoyString = `${anio}-${mes}-${dia}`; // Formato YYYY-MM-DD
-    
-    // Convertir hora del reloj actual a minutos totales transcurridos en el día
+    const fechaHoyString = `${anio}-${mes}-${dia}`; 
     const minutosActuales = (ahora.getHours() * 60) + ahora.getMinutes();
 
     let hayHorariosTotales = false;
 
     while (horaInicioJornada + duracionServicioNuevo <= horaFinJornada) {
-        
-        // 1. Comprobar si colisiona con turnos ocupados agendados
-        let estaOcupado = turnosOcupados.some(turno => {
-            return (horaInicioJornada >= turno.inicio && horaInicioJornada < turno.fin) || 
-                   (horaInicioJornada + duracionServicioNuevo > turno.inicio && horaInicioJornada + duracionServicioNuevo <= turno.fin);
-        });
-
-        // 2. RESTRICCIÓN DE TIEMPO REAL (Solo afecta si eligen el día de HOY)
-        if (fechaInput.value === fechaHoyString) {
-            // Regla A: Bloquear horas que cronológicamente ya pasaron en el reloj
-            if (horaInicioJornada <= minutosActuales) {
-                estaOcupado = true;
-            }
-            // Regla B: Impedir reservas si falta menos de 1 hora (60 min) para el cierre definitivo
-            if (horaInicioJornada > (horaFinJornada - 60)) {
-                estaOcupado = true;
-            }
-        }
-
         let hrs = Math.floor(horaInicioJornada / 60);
         let mins = horaInicioJornada % 60;
         let tiempoFormateado = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        
+        // --- VERIFICACIÓN DE SESIÓN (No repetir turnos) ---
+        let estaOcupado = turnosConfirmadosEnSesion.includes(fechaInput.value + "_" + tiempoFormateado);
+
+        // Restricción de tiempo real si es HOY
+        if (fechaInput.value === fechaHoyString) {
+            if (horaInicioJornada <= minutosActuales || horaInicioJornada > (horaFinJornada - 60)) {
+                estaOcupado = true;
+            }
+        }
         
         const option = document.createElement('option');
         option.value = tiempoFormateado;
@@ -108,24 +91,19 @@ function generarHorariosDisponibles() {
             option.style.color = "#94a3b8"; 
         } else {
             option.textContent = `${tiempoFormateado} hs`;
-            hayHorariosTotales = true; // Registra que al menos hay una opción libre real
+            hayHorariosTotales = true; 
         }
 
         horarioSelect.appendChild(option);
         horaInicioJornada += duracionServicioNuevo; 
     }
 
-    // Validación de interfaz según la disponibilidad
-    if (hayHorariosTotales) {
-        horarioSelect.disabled = false;
-    } else {
-        horarioSelect.disabled = true;
-        horarioSelect.innerHTML = '<option value="">Sin turnos disponibles para hoy</option>';
-    }
+    horarioSelect.disabled = !hayHorariosTotales;
+    if (!hayHorariosTotales) horarioSelect.innerHTML = '<option value="">Sin turnos disponibles</option>';
 }
 
 // ==========================================
-// 3. RESTRICCIONES DE ESCRITURA EN TIEMPO REAL
+// 3. RESTRICCIONES DE ESCRITURA
 // ==========================================
 const nombreInput = document.getElementById('nombre');
 const telefonoInput = document.getElementById('telefono');
@@ -137,49 +115,36 @@ nombreInput.addEventListener('input', function() {
 
 telefonoInput.addEventListener('input', function() {
     let valor = this.value;
-    if (valor.startsWith('+')) {
-        this.value = '+' + valor.slice(1).replace(/[^0-9]/g, '');
-    } else {
-        this.value = valor.replace(/[^0-9]/g, '');
-    }
+    this.value = valor.startsWith('+') ? '+' + valor.slice(1).replace(/[^0-9]/g, '') : valor.replace(/[^0-9]/g, '');
 });
 
 emailInput.addEventListener('input', function() {
     this.value = this.value.replace(/\s/g, '');
 });
 
-
-
-
 // ==========================================
-// 4. ENVÍO DEL FORMULARIO (VALIDADO Y CENTRALIZADO)
+// 4. ENVÍO DEL FORMULARIO
 // ==========================================
 document.getElementById('turnoForm').addEventListener('submit', function(e) {
     e.preventDefault(); 
     
-    // --- 1. VALIDACIÓN DE FECHA (Bloqueo de fin de semana) ---
+    // Validación de fin de semana
     const fechaSeleccionada = new Date(fechaInput.value + 'T00:00:00');
-    const dia = fechaSeleccionada.getDay();
-    if (dia === 0 || dia === 6) {
+    if (fechaSeleccionada.getDay() === 0 || fechaSeleccionada.getDay() === 6) {
         alert("Lo sentimos, no realizamos turnos los fines de semana.");
         return; 
     }
 
-    // --- 2. VALIDACIÓN DE CORREO (Bloqueo de extensiones sospechosas) ---
-    // Usamos una lista de permitidos explícita para evitar errores con ".om"
+    // Validación de correo
     const correo = emailInput.value.toLowerCase();
-    const esValido = (correo.endsWith('.com') || correo.endsWith('.ar') || correo.endsWith('.com.ar'));
-    
-    if (!esValido) {
-        alert("Error: Correo inválido. Debe terminar en .com, .ar o .com.ar");
-        emailInput.focus();
+    if (!(correo.endsWith('.com') || correo.endsWith('.ar') || correo.endsWith('.com.ar'))) {
+        alert("Error: Correo inválido.");
         return; 
     }
 
-    // --- 3. PROCESAMIENTO ---
     const btnConfirmar = document.getElementById('btnConfirmar');
     btnConfirmar.disabled = true;
-    btnConfirmar.innerText = "Procesando reserva...";
+    btnConfirmar.innerText = "Procesando...";
 
     const datosTurno = {
         nombre: nombreInput.value,
@@ -200,13 +165,15 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
     })
     .then(response => {
         if (response.ok) {
+            // --- BLOQUEO DE TURNO CONFIRMADO ---
+            turnosConfirmadosEnSesion.push(fechaInput.value + "_" + horarioSelect.value);
+            
             alert("¡Turno reservado con éxito!");
             document.getElementById('turnoForm').reset(); 
-            // Resetear estados visuales
             horarioSelect.disabled = true;
             planSelect.disabled = true;
         } else {
-            alert("Error en el servidor. Intenta de nuevo.");
+            alert("Error en el servidor.");
         }
     })
     .catch(() => alert("Error de conexión."))
