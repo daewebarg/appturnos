@@ -29,15 +29,30 @@ osSelect.addEventListener('change', function() {
 });
 
 // ==========================================
-// 2. LÓGICA DE HORARIOS Y BLOQUEOS (ALGORITMO)
+// 2. LÓGICA DE HORARIOS, BLOQUEOS Y FILTROS
 // ==========================================
 const fechaInput = document.getElementById('fecha');
 const servicioSelect = document.getElementById('servicio');
 const horarioSelect = document.getElementById('horario');
 
-// Bloquear fechas pasadas en el calendario
+// Bloquear fechas pasadas en el calendario nativo
 const hoy = new Date().toISOString().split('T')[0];
 fechaInput.min = hoy;
+
+// Validar que no se seleccionen fines de semana (Sábados ni Domingos)
+fechaInput.addEventListener('input', function() {
+    if (!this.value) return;
+    
+    const fechaSeleccionada = new Date(this.value + 'T00:00:00');
+    const diaSemana = fechaSeleccionada.getDay(); // 0 = Domingo, 6 = Sábado
+
+    if (diaSemana === 0 || diaSemana === 6) {
+        alert("El consultorio médico atiende exclusivamente de Lunes a Viernes. Por favor, seleccione un día laboral.");
+        this.value = ""; 
+        horarioSelect.disabled = true;
+        horarioSelect.innerHTML = '<option value="">Seleccione fecha y servicio</option>';
+    }
+});
 
 fechaInput.addEventListener('change', generarHorariosDisponibles);
 servicioSelect.addEventListener('change', generarHorariosDisponibles);
@@ -49,30 +64,48 @@ function generarHorariosDisponibles() {
         return;
     }
 
-    // Corrección para evitar alertas en el editor: usamos .options y .selectedIndex
     const opcionSeleccionada = servicioSelect.options[servicioSelect.selectedIndex];
     const duracionServicioNuevo = parseInt(opcionSeleccionada.getAttribute('data-duracion'));
     horarioSelect.innerHTML = '<option value="">Seleccione un horario...</option>';
     
-    // Jornada laboral expresada directamente en minutos enteros
-    let horaInicioJornada = 600; // 10:00 hs en minutos (10 * 60)
-    const horaFinJornada = 900;  // 15:00 hs en minutos (15 * 60)
+    // Jornada laboral continua (De corrido)
+    let horaInicioJornada = 600; // 10:00 hs (10 * 60)
+    const horaFinJornada = 900;  // 15:00 hs (15 * 60)
 
-    /* BASE DE DATOS REAL:
-       Dejamos el arreglo vacío para que todos los horarios arranquen disponibles.
-       En el futuro, aquí harás el fetch() a tu base de datos o Google Calendar.
+    /* BASE DE DATOS LOCAL
+       Espacio reservado para inyectar los rangos ocupados dinámicos en la Etapa 2.
     */
     const turnosOcupados = [];
 
+    // Capturar fecha y hora actual del sistema del cliente
+    const ahora = new Date();
+    const anio = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    const fechaHoyString = `${anio}-${mes}-${dia}`; 
+    
+    const minutosActuales = (ahora.getHours() * 60) + ahora.getMinutes();
     let hayHorariosTotales = false;
 
     while (horaInicioJornada + duracionServicioNuevo <= horaFinJornada) {
         
-        // Comprobar si este bloque de tiempo colisiona con un turno ocupado
-        const estaOcupado = turnosOcupados.some(turno => {
+        // Regla 1: Colisión con turnos ya agendados en la simulación
+        let estaOcupado = turnosOcupados.some(turno => {
             return (horaInicioJornada >= turno.inicio && horaInicioJornada < turno.fin) || 
                    (horaInicioJornada + duracionServicioNuevo > turno.inicio && horaInicioJornada + duracionServicioNuevo <= turno.fin);
         });
+
+        // Reglas de seguridad aplicables exclusivamente si se reserva para el mismo día de HOY
+        if (fechaInput.value === fechaHoyString) {
+            // Regla 2: Ocultar horas que ya pasaron en el reloj
+            if (horaInicioJornada <= minutosActuales) {
+                estaOcupado = true;
+            }
+            // Regla 3: Restricción de 1 hora de anticipación antes del cierre definitivo de la jornada
+            if (horaInicioJornada > (horaFinJornada - 60)) {
+                estaOcupado = true;
+            }
+        }
 
         let hrs = Math.floor(horaInicioJornada / 60);
         let mins = horaInicioJornada % 60;
@@ -82,21 +115,23 @@ function generarHorariosDisponibles() {
         option.value = tiempoFormateado;
 
         if (estaOcupado) {
-            option.textContent = `${tiempoFormateado} hs (Ocupado)`;
+            option.textContent = `${tiempoFormateado} hs (No disponible)`;
             option.disabled = true;
             option.style.color = "#94a3b8"; 
         } else {
             option.textContent = `${tiempoFormateado} hs`;
+            hayHorariosTotales = true;
         }
 
         horarioSelect.appendChild(option);
-        hayHorariosTotales = true;
-
         horaInicioJornada += duracionServicioNuevo; 
     }
 
     if (hayHorariosTotales) {
         horarioSelect.disabled = false;
+    } else {
+        horarioSelect.disabled = true;
+        horarioSelect.innerHTML = '<option value="">Sin turnos disponibles para este día</option>';
     }
 }
 
@@ -125,24 +160,35 @@ emailInput.addEventListener('input', function() {
 });
 
 // ==========================================
-// 4. ENVÍO DEL FORMULARIO A TRAVÉS DE WEBHOOK
+// 4. ENVÍO DEL FORMULARIO A TRAVÉS DE WEBHOOK (MAKE.COM)
 // ==========================================
 document.getElementById('turnoForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
+    // CANDADO DE SEGURIDAD EXTRA: Validar extensión de email de forma manual antes de enviar
+    const emailValidoRegEx = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com\.ar|com|ar)$/;
+    if (!emailValidoRegEx.test(emailInput.value)) {
+        alert("Error: El correo electrónico debe terminar estrictamente en .com, .com.ar o .ar");
+        emailInput.focus();
+        return; // Frena el código por completo y no envía nada a Make
+    }
+    
     const btnConfirmar = document.getElementById('btnConfirmar');
+    const btnTexto = document.getElementById('btnTexto');
     const opcionSeleccionada = servicioSelect.options[servicioSelect.selectedIndex];
     
-    // Cambiamos el texto del botón para que el paciente sepa que se está procesando
+    // Bloqueo estético anti doble clic
     btnConfirmar.disabled = true;
-    btnConfirmar.innerText = "Procesando reserva...";
+    btnConfirmar.style.backgroundColor = "#94a3b8";
+    btnConfirmar.style.cursor = "not-allowed";
+    btnTexto.innerText = "Procesando reserva... Por favor espere";
 
     const datosTurno = {
         nombre: nombreInput.value,
         telefono: telefonoInput.value,
         email: emailInput.value,
-        servicio: servicioSelect.options[servicioSelect.selectedIndex].text, // Guardamos el nombre limpio (ej: "Extracción")
-        duracion: parseInt(opcionSeleccionada.getAttribute('data-duracion')), // Minutos exactos para el calendario
+        servicio: servicioSelect.options[servicioSelect.selectedIndex].text, 
+        duracion: parseInt(opcionSeleccionada.getAttribute('data-duracion')), 
         obraSocial: osSelect.value.toUpperCase(),
         plan: planSelect.options[planSelect.selectedIndex].text,
         fecha: fechaInput.value,
@@ -150,10 +196,8 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
         comentarios: document.getElementById('comentarios').value
     };
 
-    // REEMPLAZAR ESTA URL: Aquí pegarás el Webhook que te dará Make.com más adelante
     const urlWebhookMake = "https://hook.eu1.make.com/hp1k5ih8o8u86v9ri9yfypknuwjacajr";
 
-    // Enviamos los datos a Make de forma segura
     fetch(urlWebhookMake, {
         method: 'POST',
         headers: {
@@ -163,8 +207,8 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
     })
     .then(response => {
         if (response.ok) {
-            alert(`¡Turno reservado con éxito! Se ha enviado un correo de confirmación a ${datosTurno.email}.`);
-            document.getElementById('turnoForm').reset(); // Limpia el formulario
+            alert(`¡Turno reservado con éxito!\nSe ha enviado un correo electrónico de confirmación a ${datosTurno.email}.`);
+            document.getElementById('turnoForm').reset(); 
             horarioSelect.disabled = true;
             planSelect.disabled = true;
         } else {
@@ -173,11 +217,13 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
     })
     .catch(error => {
         console.error("Error:", error);
-        alert("Error de conexión. Inténtalo más tarde.");
+        alert("Error de conexión con el servidor. Inténtalo más tarde.");
     })
     .finally(() => {
-        // Restauramos el botón
+        // Restaurar botón a su estado original
         btnConfirmar.disabled = false;
-        btnConfirmar.innerText = "Confirmar Reserva";
+        btnConfirmar.style.backgroundColor = ""; 
+        btnConfirmar.style.cursor = "pointer";
+        btnTexto.innerText = "Confirmar Reserva";
     });
 });

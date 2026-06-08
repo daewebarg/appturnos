@@ -3,25 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Reserva de Turnos</title>
+    <title>Reserva de Turnos Médicos</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="container">
-        <h2>Reserva tu Turno</h2>
-        
+        <h2>Solicitud de Turno Médico</h2>
         <form id="turnoForm">
             
-            <div class="grid-2">
-                <div class="form-group">
-                    <label for="nombre">Nombre y Apellido *</label>
-                    <input type="text" id="nombre" required placeholder="Ej: Juan Pérez">
-                </div>
-                <div class="form-group">
-                    <label for="telefono">Teléfono *</label>
-                    <input type="tel" id="telefono" required placeholder="Ej: +549112345678">
-                </div>
+            <div class="form-group">
+                <label for="nombre">Nombre y Apellido *</label>
+                <input type="text" id="nombre" required placeholder="Ej: Juan Pérez">
+            </div>
+
+            <div class="form-group">
+                <label for="telefono">Teléfono de Contacto *</label>
+                <input type="tel" id="telefono" required placeholder="Ej: +5491123456789">
             </div>
 
             <div class="form-group">
@@ -31,63 +29,63 @@
   id="email" 
   name="email" 
   required 
-  pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.(com\.ar|com|ar)$"
-  title="Por favor, introduce un correo válido que termine en .com, .com.ar o .ar"
+  pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com\.ar|com|ar)$"
+  title="Por favor, introduce un correo válido que termine estrictamente en .com, .com.ar o .ar"
+  placeholder="Ej: usuario@gmail.com"
 >
             </div>
 
-            <div class="grid-3">
-                <div class="form-group">
-                    <label for="servicio">Servicio *</label>
-                    <select id="servicio" required>
-                        <option value="">Seleccione...</option>
-                        <option value="consulta" data-duracion="30">Consulta</option>
-                        <option value="limpieza" data-duracion="45">Limpieza</option>
-                        <option value="extraccion" data-duracion="120">Extracción</option>
-                        <option value="control" data-duracion="30">Control</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="obraSocial">Obra Social *</label>
-                    <select id="obraSocial" required>
-                        <option value="">Seleccione...</option>
-                        <option value="osde">OSDE</option>
-                        <option value="swiss">Swiss Medical</option>
-                        <option value="particular">Particular</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="plan">Plan *</label>
-                    <select id="plan" required disabled>
-                        <option value="">Seleccione Obra Social</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid-2">
-                <div class="form-group">
-                    <label for="fecha">Fecha *</label>
-                    <input type="date" id="fecha" required>
-                </div>
-                <div class="form-group">
-                    <label for="horario">Horarios Disponibles *</label>
-                    <select id="horario" required disabled>
-                        <option value="">Seleccione fecha y servicio</option>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label for="servicio">Servicio / Consulta *</label>
+                <select id="servicio" required>
+                    <option value="">Seleccione un servicio...</option>
+                    <option value="consulta-general" data-duracion="30">Consulta General (30 min)</option>
+                    <option value="extraccion" data-duracion="15">Extracción de Sangre (15 min)</option>
+                    <option value="control" data-duracion="20">Control Médico (20 min)</option>
+                </select>
             </div>
 
             <div class="form-group">
-                <label for="comentarios">Notas o comentarios adicionales</label>
-                <textarea id="comentarios" rows="3" placeholder="¿Algo que el profesional deba saber antes de tu visita?"></textarea>
+                <label for="obraSocial">Obra Social *</label>
+                <select id="obraSocial" required>
+                    <option value="">Seleccione...</option>
+                    <option value="osde">OSDE</option>
+                    <option value="swiss">Swiss Medical</option>
+                    <option value="particular">Particular</option>
+                </select>
             </div>
 
-            <button type="submit" id="btnConfirmar">Confirmar Reserva</button>
+            <div class="form-group">
+                <label for="plan">Plan *</label>
+                <select id="plan" required disabled>
+                    <option value="">Seleccione Obra Social</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fecha">Fecha del Turno *</label>
+                <input type="date" id="fecha" required>
+            </div>
+
+            <div class="form-group">
+                <label for="horario">Horarios Disponibles *</label>
+                <select id="horario" required disabled>
+                    <option value="">Seleccione fecha y servicio</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="comentarios">Notas o Comentarios Adicionales</label>
+                <textarea id="comentarios" rows="3" placeholder="Ej: Alergias, síntomas previos..."></textarea>
+            </div>
+
+            <button type="submit" id="btnConfirmar" class="btn-submit">
+                <span id="btnTexto">Confirmar Reserva</span>
+            </button>
+
         </form>
     </div>
 
-    <script src="app.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
