@@ -163,21 +163,42 @@ emailInput.addEventListener('input', function() {
 // 4. ENVÍO DEL FORMULARIO A TRAVÉS DE WEBHOOK (MAKE.COM)
 // ==========================================
 document.getElementById('turnoForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+    // 1. FRENAR EL ENVÍO AUTOMÁTICO PARA HACER NUESTRAS VALIDACIONES
+    e.preventDefault(); 
     
-    // CANDADO DE SEGURIDAD EXTRA: Validar extensión de email de forma manual antes de enviar
+    // 2. VALIDACIÓN A: Forzar al navegador a chequear el PATTERN del HTML (.com, .com.ar, .ar)
+    if (!this.checkValidity()) {
+        this.reportValidity(); // Muestra el cartelito nativo de error del navegador
+        return; // Frena el código acá, no cambia el botón ni envía nada a Make
+    }
+
+    // 3. VALIDACIÓN B: Candado manual extra para el Email (.om, .co, etc.)
     const emailValidoRegEx = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com\.ar|com|ar)$/;
     if (!emailValidoRegEx.test(emailInput.value)) {
         alert("Error: El correo electrónico debe terminar estrictamente en .com, .com.ar o .ar");
         emailInput.focus();
-        return; // Frena el código por completo y no envía nada a Make
+        return; // Frena el código
     }
-    
+
+    // 4. VALIDACIÓN C: Candado manual para Fin de Semana (Sábado/Domingo)
+    if (fechaInput.value) {
+        const fechaSeleccionada = new Date(fechaInput.value + 'T00:00:00');
+        const diaSemana = fechaSeleccionada.getDay(); // 0 = Domingo, 6 = Sábado
+        if (diaSemana === 0 || diaSemana === 6) {
+            alert("Error: No se pueden programar turnos los fines de semana.");
+            fechaInput.focus();
+            return; // Frena el código
+        }
+    }
+
+    // =================================================================
+    // SI PASÓ TODAS LAS VALIDACIONES ANTERIORES, RECIÉN AHÍ PROCESAMOS
+    // =================================================================
     const btnConfirmar = document.getElementById('btnConfirmar');
     const btnTexto = document.getElementById('btnTexto');
     const opcionSeleccionada = servicioSelect.options[servicioSelect.selectedIndex];
     
-    // Bloqueo estético anti doble clic
+    // Ahora sí cambiamos el estado visual del botón de forma segura
     btnConfirmar.disabled = true;
     btnConfirmar.style.backgroundColor = "#94a3b8";
     btnConfirmar.style.cursor = "not-allowed";
@@ -192,6 +213,7 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
         obraSocial: osSelect.value.toUpperCase(),
         plan: planSelect.options[planSelect.selectedIndex].text,
         fecha: fechaInput.value,
+        previoHorario: horarioSelect.value,
         horario: horarioSelect.value,
         comentarios: document.getElementById('comentarios').value
     };
