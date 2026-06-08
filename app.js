@@ -179,17 +179,18 @@ document.getElementById('turnoForm').addEventListener('submit', function(e) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datosTurno)
     })
-    .then(response => {
-        if (response.ok) {
-            turnosConfirmadosEnSesion.push(fechaInput.value + "_" + horarioSelect.value);
-            alert("¡Turno reservado con éxito!");
-            document.getElementById('turnoForm').reset(); 
-            horarioSelect.disabled = true;
-            planSelect.disabled = true;
-        } else {
-            alert("Error en el servidor.");
-        }
-    })
+  .then(response => {
+    // Si Make responde 200 (OK), entra aquí
+    if (response.ok) {
+        turnosConfirmadosEnSesion.push(fechaInput.value + "_" + horarioSelect.value);
+        alert("¡Turno reservado con éxito!");
+        document.getElementById('turnoForm').reset();
+        horarioSelect.disabled = true;
+        planSelect.disabled = true;
+    } else {
+        alert("El servidor recibió los datos pero respondió con error.");
+    }
+})
     .catch(() => alert("Error de conexión."))
     .finally(() => {
         btnConfirmar.disabled = false;
