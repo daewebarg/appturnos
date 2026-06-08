@@ -26,7 +26,14 @@
 
             <div class="form-group">
                 <label for="email">Correo Electrónico *</label>
-                <input type="email" id="email" required placeholder="ejemplo@correo.com">
+                <input 
+  type="email" 
+  id="email" 
+  name="email" 
+  required 
+  pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.(com\.ar|com|ar)$"
+  title="Por favor, introduce un correo válido que termine en .com, .com.ar o .ar"
+>
             </div>
 
             <div class="grid-3">
