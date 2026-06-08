@@ -63,22 +63,42 @@ fechaInput.addEventListener('change', function() {
 servicioSelect.addEventListener('change', generarHorariosDisponibles);
 
 function generarHorariosDisponibles() {
+    // Si falta la fecha o el servicio, mantenemos el selector de horarios apagado
     if (!fechaInput.value || !servicioSelect.value) {
         horarioSelect.disabled = true;
         horarioSelect.innerHTML = '<option value="">Seleccione fecha y servicio</option>';
         return;
     }
 
+    // 1. CAPTURAR LA FECHA CORRECTAMENTE (Evitando desfases de zona horaria)
+    const partesFecha = fechaInput.value.split('-');
+    // El mes en JavaScript va de 0 (enero) a 11 (diciembre), por eso restamos 1
+    const fechaEvaluada = new Date(partesFecha[0], partesFecha[1] - 1, partesFecha[2]);
+    const diaSemana = fechaEvaluada.getDay(); // 0 = Domingo, 6 = Sábado
+
+    // 2. FILTRO INMEDIATO DE FIN DE SEMANA
+    if (diaSemana === 0 || diaSemana === 6) {
+        alert("El consultorio médico atiende exclusivamente de Lunes a Viernes. Por favor, seleccione un día laboral.");
+        fechaInput.value = ""; // Limpiamos el campo mal elegido
+        horarioSelect.disabled = true;
+        horarioSelect.innerHTML = '<option value="">Seleccione fecha y servicio</option>';
+        return;
+    }
+
+    // 3. CAPTURAR DURACIÓN DEL SERVICIO (CORREGIDO)
     const opcionSeleccionada = servicioSelect.options[servicioSelect.selectedIndex];
-    const duracionServicioNuevo = parseInt(opcionServicioNuevo = opcionSeleccionada.getAttribute('data-duracion'));
+    const duracionServicioNuevo = parseInt(opcionSeleccionada.getAttribute('data-duracion'));
+    
+    // Limpiamos el selector de horarios para meter las opciones nuevas
     horarioSelect.innerHTML = '<option value="">Seleccione un horario...</option>';
     
-    // Jornada laboral de corrido (10:00 a 15:00 hs)
+    // Jornada laboral de corrido (10:00 a 15:00 hs -> expresada en minutos)
     let horaInicioJornada = 600; 
     const horaFinJornada = 900;  
 
     const turnosOcupados = []; // Simulación limpia para la demo
 
+    // Capturar hora y fecha del día de hoy real del sistema
     const ahora = new Date();
     const anio = ahora.getFullYear();
     const mes = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -88,12 +108,13 @@ function generarHorariosDisponibles() {
     
     let hayHorariosTotales = false;
 
+    // 4. GENERAR EL BUCLE DE HORARIOS
     while (horaInicioJornada + duracionServicioNuevo <= horaFinJornada) {
         let estaOcupado = false;
 
-        // Reglas si eligen sacar un turno para el día de HOY
+        // Reglas estrictas si eligen sacar un turno para el mismo día de HOY
         if (fechaInput.value === fechaHoyString) {
-            if (horaInicioJornada <= minutosActuales) estaOcupado = true; // El horario ya pasó
+            if (horaInicioJornada <= minutosActuales) estaOcupado = true; // El horario ya pasó en el reloj
             if (horaInicioJornada > (horaFinJornada - 60)) estaOcupado = true; // Falta menos de 1 hora para el cierre
         }
 
@@ -107,7 +128,7 @@ function generarHorariosDisponibles() {
         if (estaOcupado) {
             option.textContent = `${tiempoFormateado} hs (No disponible)`;
             option.disabled = true;
-            option.style.color = "#94a3b8"; 
+            option.style.color = "rgba(255,255,255,0.4)"; 
         } else {
             option.textContent = `${tiempoFormateado} hs`;
             hayHorariosTotales = true;
@@ -117,6 +138,7 @@ function generarHorariosDisponibles() {
         horaInicioJornada += duracionServicioNuevo; 
     }
 
+    // 5. HABILITAR EL SELECTOR SI HAY OPCIONES VÁLIDAS
     if (hayHorariosTotales) {
         horarioSelect.disabled = false;
     } else {
