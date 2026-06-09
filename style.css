@@ -205,3 +205,36 @@ h2 {
         font-size: 16px;
     }
 }
+
+
+/* Contenedor principal responsive */
+.calendar-container {
+    width: 100%;             /* Ocupa todo el ancho */
+    max-width: 400px;        /* Pero no crece infinitamente en escritorio */
+    margin: 0 auto;          /* Centrado */
+    padding: 15px;
+    box-sizing: border-box;  /* Importante para que el padding no rompa el ancho */
+}
+
+/* Ajuste de la grilla para que las celdas sean cuadradas y fluidas */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.day {
+    aspect-ratio: 1 / 1;      /* Fuerza a que el alto sea igual al ancho */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    border: none;             /* Quitamos bordes pesados para mobile */
+}
+
+/* Leyenda adaptable */
+.leyenda {
+    flex-wrap: wrap;          /* Si la pantalla es muy pequeña, los items saltan de línea */
+    gap: 10px;
+    font-size: 0.8rem;
+}
